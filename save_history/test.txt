@@ -1,0 +1,11 @@
+1:
+(venv) hikiray@hikiray:~/diplom$ python3 src/detected_torch_new.py 
+Precision: 0.089, Recall: 0.318, F1: 0.139
+Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.
+
+
+2:
+(venv) hikiray@hikiray:~/diplom$ python3 src/detected_torch_new.py 
+Используем seq_len=32, threshold=0.047581
+Precision: 0.117, Recall: 0.408, F1: 0.182
+Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.

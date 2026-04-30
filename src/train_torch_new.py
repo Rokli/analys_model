@@ -1,104 +1,134 @@
 import torch
 import torch.nn as nn
-import pandas as pd
 import numpy as np
+import pandas as pd
 import json
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 
-class Autoencoder(nn.Module):
-    def __init__(self, input_dim=2):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, 16),
-            nn.ReLU(),
-            nn.Linear(16, 8),
-            nn.ReLU(),
-            nn.Linear(8, 4)
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(4, 8),
-            nn.ReLU(),
-            nn.Linear(8, 16),
-            nn.ReLU(),
-            nn.Linear(16, input_dim)
-        )
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
-
-# === Загрузка NAB ===
-def load_nab(csv_path, labels_path):
+# ------------------------------
+# 1. Загрузка NAB и разметка окон
+# ------------------------------
+def load_nab_timeseries(csv_path, labels_path, key):
     df = pd.read_csv(csv_path)
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df = df.set_index('timestamp').sort_index()
-    series = df['value'].values.astype(float)
-
-    # создаём второй признак: lag1
-    lagged = np.roll(series, 1)
-    lagged[0] = lagged[1]
-    data = np.column_stack([series, lagged])
+    series = df['value'].values.astype(np.float32)
 
     with open(labels_path) as f:
         labels_dict = json.load(f)
-    # ключ в json — относительный путь от data/
-    key = "data/ec2_cpu_utilization_5f5533.csv"
     windows = []
     for start_str, end_str in labels_dict[key]:
         windows.append((pd.to_datetime(start_str), pd.to_datetime(end_str)))
-    return data, df.index, windows
+    return series, df.index, windows
 
+# ------------------------------
+# 2. Формирование окон (seq_len)
+# ------------------------------
+def create_sequences(series, seq_len):
+    xs = []
+    for i in range(len(series) - seq_len + 1):   # +1
+        xs.append(series[i:i+seq_len])
+    return np.array(xs)
+
+# ------------------------------
+# 3. Автоэнкодер (полносвязный, для развёрнутого окна)
+# ------------------------------
+class WindowAutoencoder(nn.Module):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 8)      # узкое место
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(8, 32),
+            nn.ReLU(),
+            nn.Linear(32, 64),
+            nn.ReLU(),
+            nn.Linear(64, input_dim)
+        )
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded
+
+# ------------------------------
+# 4. Обучение и сохранение
+# ------------------------------
 if __name__ == "__main__":
-    csv_path = "data/ec2_cpu_utilization_5f5533.csv"
-    labels_path = "labels/combined_windows.json"
+    SEQUENCE_LENGTH = 32
+    CSV = "data/ec2_cpu_utilization_5f5533.csv"
+    LABELS = "labels/combined_windows.json"
+    KEY = "realAWSCloudwatch/ec2_cpu_utilization_5f5533.csv"
 
-    data, timestamps, anomaly_windows = load_nab(csv_path, labels_path)
-    print("Загружено точек:", len(data), "аномальных окон:", len(anomaly_windows))
+    series, timestamps, anomaly_windows = load_nab_timeseries(CSV, LABELS, KEY)
 
-    # Разделение 70/30 (первые 70% тренировка)
-    split_idx = int(0.7 * len(data))
-    train_data = data[:split_idx]
-    test_data = data[split_idx:]
-    test_timestamps = timestamps[split_idx:]
+    # Создаём окна
+    X_all = create_sequences(series, SEQUENCE_LENGTH)
+    # Временные метки для окон берём начало окна (можно середину, не принципиально)
+    t_all = timestamps[SEQUENCE_LENGTH-1:]  # последний индекс окна
 
-    # Масштабирование
+    # Определяем train без аномалий: берём непрерывный участок до первого аномального окна
+    first_anom = min(w[0] for w in anomaly_windows) if anomaly_windows else t_all[-1]
+    train_mask = t_all < first_anom
+    X_train = X_all[train_mask]
+    # test – всё, что после (содержит аномалии)
+    test_mask = ~train_mask
+    X_test = X_all[test_mask]
+    t_test = t_all[test_mask]
+
+    # Масштабирование (по всем точкам train, применяем к test)
+    # Для окон преобразуем форму: (samples, seq_len) -> (samples * seq_len,) для fit, но проще:
     scaler = MinMaxScaler()
-    train_scaled = scaler.fit_transform(train_data)
-    test_scaled = scaler.transform(test_data)
+    # fit по всем пикселям train
+    scaler.fit(X_train.reshape(-1, 1))
+    # transform
+    X_train_scaled = scaler.transform(X_train.reshape(-1, 1)).reshape(X_train.shape)
+    X_test_scaled = scaler.transform(X_test.reshape(-1, 1)).reshape(X_test.shape)
 
     # Тензоры
-    X_train = torch.tensor(train_scaled, dtype=torch.float32)
+    X_train_t = torch.tensor(X_train_scaled, dtype=torch.float32)
+    X_test_t  = torch.tensor(X_test_scaled, dtype=torch.float32)
 
     # Модель
-    model = Autoencoder(input_dim=2)
+    model = WindowAutoencoder(input_dim=SEQUENCE_LENGTH)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # Обучение
-    print("Обучение...")
-    for epoch in range(100):
+    # Обучение (можно больше эпох, добавить early stopping)
+    EPOCHS = 100
+    for epoch in range(EPOCHS):
         optimizer.zero_grad()
-        output = model(X_train)
-        loss = criterion(output, X_train)
+        output = model(X_train_t)
+        loss = criterion(output, X_train_t)
         loss.backward()
         optimizer.step()
         if epoch % 20 == 0:
             print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
 
-    # Вычисляем порог на train
+    # Ошибка восстановления на train (для порога)
     model.eval()
     with torch.no_grad():
-        recon_train = model(X_train)
-    train_mse = torch.mean((X_train - recon_train) ** 2, dim=1).numpy()
-    threshold = np.percentile(train_mse, 95)
-    print(f"Порог (95-й перцентиль MSE) = {threshold:.6f}")
+        train_recon = model(X_train_t)
+    train_mse = torch.mean((X_train_t - train_recon) ** 2, dim=1).numpy()
 
-    # Сохраняем модель, scaler, threshold
-    torch.save(model.state_dict(), "model/autoencoder.pt")
-    joblib.dump(scaler, "model/scaler.pkl")
-    with open("model/threshold.txt", "w") as f:
-        f.write(str(threshold))
+    # Сглаживание ошибки (окно 5)
+    def smooth(y, w):
+        return np.convolve(y, np.ones(w)/w, mode='same')
 
-    print("Модель, scaler и порог сохранены.")
+    train_mse_smooth = smooth(train_mse, 5)
+    threshold = np.percentile(train_mse_smooth, 95)
+
+    # Сохраняем всё
+    torch.save(model.state_dict(), "model/window_ae.pt")
+    joblib.dump(scaler, "model/window_scaler.pkl")
+    with open("model/window_threshold.txt", "w") as f:
+        f.write(f"{threshold}\n{SEQUENCE_LENGTH}\n")
+
+    print(f"Порог (95% перцентиль сглаженной MSE): {threshold:.6f}")
+    print("Обучение завершено, модель, scaler и порог сохранены.")
