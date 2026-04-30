@@ -43,6 +43,7 @@ def main():
         writer.writerow([
             "timestamp",
             "value",
+            "delta",
             "mse",
             "threshold",
             "raw_status",
@@ -51,9 +52,10 @@ def main():
 
     window = deque(maxlen=SEQ_LEN)
 
+    current_status = "normal"
     anomaly_counter = 0
     normal_counter = 0
-    current_status = "normal"
+    prev_value = None
 
     print("Real-time anomaly detection started")
     print(f"Threshold: {threshold:.6f}")
@@ -67,10 +69,20 @@ def main():
             time.sleep(REALTIME_INTERVAL)
             continue
 
+        if prev_value is None:
+            delta = 0.0
+        else:
+            delta = value - prev_value
+
+        prev_value = value
+
         window.append(value)
 
         if len(window) < SEQ_LEN:
-            print(f"Collecting window: {len(window)}/{SEQ_LEN}, value={value:.2f}")
+            print(
+                f"Collecting window: {len(window)}/{SEQ_LEN}, "
+                f"value={value:.2f}, delta={delta:.2f}"
+            )
             time.sleep(REALTIME_INTERVAL)
             continue
 
@@ -93,16 +105,39 @@ def main():
             normal_counter += 1
             anomaly_counter = 0
 
-        if anomaly_counter >= 3:
-            current_status = "ANOMALY"
+        # =========================
+        # 4 состояния системы
+        # =========================
+        # normal      — нормальная работа
+        # load_start  — начинается рост нагрузки
+        # anomaly     — обнаружена аномалия
+        # recovery    — разгрузка после аномалии
 
-        if normal_counter >= 3:
-            current_status = "normal"
+        if current_status == "normal":
+            if delta > 5:
+                current_status = "load_start"
+
+        elif current_status == "load_start":
+            if anomaly_counter >= 2:
+                current_status = "anomaly"
+            elif delta < -2 and raw_status == "normal":
+                current_status = "normal"
+
+        elif current_status == "anomaly":
+            if delta < -5:
+                current_status = "recovery"
+
+        elif current_status == "recovery":
+            if anomaly_counter >= 2:
+                current_status = "anomaly"
+            elif normal_counter >= 3:
+                current_status = "normal"
 
         status = current_status
 
         print(
             f"value={value:.2f}, "
+            f"delta={delta:.2f}, "
             f"mse={mse:.6f}, "
             f"threshold={threshold:.6f}, "
             f"raw={raw_status}, "
@@ -114,6 +149,7 @@ def main():
             writer.writerow([
                 datetime.now().isoformat(timespec="seconds"),
                 value,
+                delta,
                 mse,
                 threshold,
                 raw_status,
