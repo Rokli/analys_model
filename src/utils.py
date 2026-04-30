@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+
+### не используется нигде, это исскуственные данные
+
 def generate_data():
     np.random.seed(42)
 

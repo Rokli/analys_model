@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from utils import generate_data
 from fetch_metrics import collect_metrics
 
 class Autoencoder(nn.Module):
