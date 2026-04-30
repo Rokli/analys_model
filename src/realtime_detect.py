@@ -1,5 +1,7 @@
 import os
 import time
+import csv
+from datetime import datetime
 from collections import deque
 
 import numpy as np
@@ -33,10 +35,29 @@ def main():
     with open(os.path.join(PROM_MODEL_DIR, "threshold.txt")) as f:
         threshold = float(f.read().strip())
 
+    os.makedirs("model", exist_ok=True)
+    log_file = "model/realtime_log.csv"
+
+    with open(log_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "timestamp",
+            "value",
+            "mse",
+            "threshold",
+            "raw_status",
+            "status"
+        ])
+
     window = deque(maxlen=SEQ_LEN)
+
+    anomaly_counter = 0
+    normal_counter = 0
+    current_status = "normal"
 
     print("Real-time anomaly detection started")
     print(f"Threshold: {threshold:.6f}")
+    print(f"Log file: {log_file}")
 
     while True:
         value = query_instant(PROM_QUERY)
@@ -63,14 +84,41 @@ def main():
 
         mse = torch.mean((x_t - recon) ** 2).item()
 
-        status = "ANOMALY" if mse > threshold else "normal"
+        raw_status = "ANOMALY" if mse > threshold else "normal"
+
+        if raw_status == "ANOMALY":
+            anomaly_counter += 1
+            normal_counter = 0
+        else:
+            normal_counter += 1
+            anomaly_counter = 0
+
+        if anomaly_counter >= 3:
+            current_status = "ANOMALY"
+
+        if normal_counter >= 3:
+            current_status = "normal"
+
+        status = current_status
 
         print(
             f"value={value:.2f}, "
             f"mse={mse:.6f}, "
             f"threshold={threshold:.6f}, "
+            f"raw={raw_status}, "
             f"status={status}"
         )
+
+        with open(log_file, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                datetime.now().isoformat(timespec="seconds"),
+                value,
+                mse,
+                threshold,
+                raw_status,
+                status
+            ])
 
         time.sleep(REALTIME_INTERVAL)
 

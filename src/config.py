@@ -28,7 +28,7 @@ DATASETS = [
 ]
 
 # Настройки модели
-SEQ_LEN = 32
+#SEQ_LEN = 32
 HIDDEN_DIM = 32
 LATENT_DIM = 4
 BATCH_SIZE = 64   # если захотим мини-батчи, пока не используем
@@ -42,6 +42,10 @@ PROM_QUERY = '100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)'
 
 PROM_MODEL_DIR = "model/prometheus_cpu"
 PROM_TRAIN_MINUTES = 30
-PROM_STEP = "15s"
+#PROM_STEP = "15s"
 
-REALTIME_INTERVAL = 15
+#REALTIME_INTERVAL = 15
+
+SEQ_LEN = 16
+REALTIME_INTERVAL = 5
+PROM_STEP = "5s"

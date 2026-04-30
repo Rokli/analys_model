@@ -76,8 +76,8 @@ def train_prometheus_model():
     mse = torch.mean((X_t - recon) ** 2, dim=(1, 2)).numpy()
     mse_smooth = smooth(mse, SMOOTH_WINDOW)
 
-    threshold = np.mean(mse_smooth) + 3.5 * np.std(mse_smooth)
-
+    #threshold = np.mean(mse_smooth) + 1.5 * np.std(mse_smooth)
+    threshold = np.percentile(mse_smooth, 85)
     Path(PROM_MODEL_DIR).mkdir(parents=True, exist_ok=True)
 
     torch.save(model.state_dict(), os.path.join(PROM_MODEL_DIR, "model.pt"))
