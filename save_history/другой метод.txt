@@ -1,0 +1,74 @@
+(venv) hikiray@hikiray:~/diplom$ python src/evaluate_iforest.py
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_24ae8d.csv
+Precision=0.095, Recall=1.000, F1=0.174
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv
+Precision=0.105, Recall=1.000, F1=0.190
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_5f5533.csv
+Precision=0.095, Recall=1.000, F1=0.174
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_77c1ca.csv
+Precision=0.100, Recall=1.000, F1=0.182
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_825cc2.csv
+Precision=0.111, Recall=1.000, F1=0.200
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_ac20cd.csv
+Precision=0.250, Recall=1.000, F1=0.400
+
+IForest: realAWSCloudwatch/ec2_cpu_utilization_fe7f93.csv
+Precision=0.143, Recall=0.667, F1=0.235
+
+IForest: realAWSCloudwatch/ec2_disk_write_bytes_1ef3de.csv
+Precision=0.067, Recall=1.000, F1=0.125
+
+IForest: realAWSCloudwatch/ec2_disk_write_bytes_c0d644.csv
+Precision=0.154, Recall=0.667, F1=0.250
+
+IForest: realAWSCloudwatch/ec2_network_in_257a54.csv
+Precision=0.091, Recall=1.000, F1=0.167
+
+IForest: realAWSCloudwatch/ec2_network_in_5abac7.csv
+Precision=0.167, Recall=1.000, F1=0.286
+
+IForest: realAWSCloudwatch/elb_request_count_8c0756.csv
+Precision=0.167, Recall=1.000, F1=0.286
+
+IForest: realAWSCloudwatch/grok_asg_anomaly.csv
+Precision=0.062, Recall=0.333, F1=0.105
+
+IForest: realAWSCloudwatch/iio_us-east-1_i-a2eb1cd9_NetworkIn.csv
+Precision=0.500, Recall=0.500, F1=0.500
+
+IForest: realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv
+Precision=0.133, Recall=1.000, F1=0.235
+
+IForest: realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv
+Precision=0.133, Recall=1.000, F1=0.235
+
+===== Isolation Forest =====
+                                              Dataset  Precision_IF  Recall_IF     F1_IF
+0    realAWSCloudwatch/ec2_cpu_utilization_24ae8d.csv      0.095238   1.000000  0.173913
+1    realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv      0.105263   1.000000  0.190476
+2    realAWSCloudwatch/ec2_cpu_utilization_5f5533.csv      0.095238   1.000000  0.173913
+3    realAWSCloudwatch/ec2_cpu_utilization_77c1ca.csv      0.100000   1.000000  0.181818
+4    realAWSCloudwatch/ec2_cpu_utilization_825cc2.csv      0.111111   1.000000  0.200000
+5    realAWSCloudwatch/ec2_cpu_utilization_ac20cd.csv      0.250000   1.000000  0.400000
+6    realAWSCloudwatch/ec2_cpu_utilization_fe7f93.csv      0.142857   0.666667  0.235294
+7   realAWSCloudwatch/ec2_disk_write_bytes_1ef3de.csv      0.066667   1.000000  0.125000
+8   realAWSCloudwatch/ec2_disk_write_bytes_c0d644.csv      0.153846   0.666667  0.250000
+9         realAWSCloudwatch/ec2_network_in_257a54.csv      0.090909   1.000000  0.166667
+10        realAWSCloudwatch/ec2_network_in_5abac7.csv      0.166667   1.000000  0.285714
+11     realAWSCloudwatch/elb_request_count_8c0756.csv      0.166667   1.000000  0.285714
+12             realAWSCloudwatch/grok_asg_anomaly.csv      0.062500   0.333333  0.105263
+13  realAWSCloudwatch/iio_us-east-1_i-a2eb1cd9_Net...      0.500000   0.500000  0.500000
+14   realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv      0.133333   1.000000  0.235294
+15   realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv      0.133333   1.000000  0.235294
+
+Mean:
+Precision_IF    0.148352
+Recall_IF       0.885417
+F1_IF           0.234023
+dtype: float64

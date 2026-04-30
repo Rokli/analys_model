@@ -1,0 +1,17 @@
+Dataset,Precision_IF,Recall_IF,F1_IF
+realAWSCloudwatch/ec2_cpu_utilization_24ae8d.csv,0.09523809523809523,1.0,0.17391304347826084
+realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv,0.10526315789473684,1.0,0.1904761904761905
+realAWSCloudwatch/ec2_cpu_utilization_5f5533.csv,0.09523809523809523,1.0,0.17391304347826084
+realAWSCloudwatch/ec2_cpu_utilization_77c1ca.csv,0.1,1.0,0.18181818181818182
+realAWSCloudwatch/ec2_cpu_utilization_825cc2.csv,0.1111111111111111,1.0,0.19999999999999998
+realAWSCloudwatch/ec2_cpu_utilization_ac20cd.csv,0.25,1.0,0.4
+realAWSCloudwatch/ec2_cpu_utilization_fe7f93.csv,0.14285714285714285,0.6666666666666666,0.23529411764705882
+realAWSCloudwatch/ec2_disk_write_bytes_1ef3de.csv,0.06666666666666667,1.0,0.125
+realAWSCloudwatch/ec2_disk_write_bytes_c0d644.csv,0.15384615384615385,0.6666666666666666,0.25
+realAWSCloudwatch/ec2_network_in_257a54.csv,0.09090909090909091,1.0,0.16666666666666669
+realAWSCloudwatch/ec2_network_in_5abac7.csv,0.16666666666666666,1.0,0.2857142857142857
+realAWSCloudwatch/elb_request_count_8c0756.csv,0.16666666666666666,1.0,0.2857142857142857
+realAWSCloudwatch/grok_asg_anomaly.csv,0.0625,0.3333333333333333,0.10526315789473684
+realAWSCloudwatch/iio_us-east-1_i-a2eb1cd9_NetworkIn.csv,0.5,0.5,0.5
+realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv,0.13333333333333333,1.0,0.23529411764705882
+realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv,0.13333333333333333,1.0,0.23529411764705882
