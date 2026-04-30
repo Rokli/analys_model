@@ -27,6 +27,6 @@ anomalies = mse > threshold
 plt.figure()
 plt.plot(mse)
 plt.axhline(threshold)
-plt.show()
+plt.savefig("../model/anomalies.png")
 
 print("Anomalies:", np.sum(anomalies))
