@@ -3,3 +3,6 @@ pandas
 scikit-learn
 torch
 matplotlib
+streamlit 
+plotly
+requests
