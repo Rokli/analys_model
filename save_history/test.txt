@@ -9,3 +9,36 @@ Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland
 Используем seq_len=32, threshold=0.047581
 Precision: 0.117, Recall: 0.408, F1: 0.182
 Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.
+
+
+теперь работаем по 10+ разным датасетам
+5:
+Средние метрики:
+Precision: 0.395 ± 0.309
+Recall:    0.327 ± 0.212
+F1:        0.262 ± 0.107
+
+
+7:
+Precision    0.326798
+Recall       0.854167
+F1           0.382647
+
+===== RESULT =====
+                                              Dataset  Precision    Recall        F1
+0    realAWSCloudwatch/ec2_cpu_utilization_24ae8d.csv   0.066667  0.500000  0.117647
+1    realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv   0.166667  1.000000  0.285714
+2    realAWSCloudwatch/ec2_cpu_utilization_5f5533.csv   0.666667  1.000000  0.800000
+3    realAWSCloudwatch/ec2_cpu_utilization_77c1ca.csv   0.076923  1.000000  0.142857
+4    realAWSCloudwatch/ec2_cpu_utilization_825cc2.csv   0.100000  1.000000  0.181818
+5    realAWSCloudwatch/ec2_cpu_utilization_ac20cd.csv   0.333333  1.000000  0.500000
+6    realAWSCloudwatch/ec2_cpu_utilization_fe7f93.csv   0.095238  0.666667  0.166667
+7   realAWSCloudwatch/ec2_disk_write_bytes_1ef3de.csv   0.052632  1.000000  0.100000
+8   realAWSCloudwatch/ec2_disk_write_bytes_c0d644.csv   0.111111  0.666667  0.190476
+9         realAWSCloudwatch/ec2_network_in_257a54.csv   0.083333  1.000000  0.153846
+10        realAWSCloudwatch/ec2_network_in_5abac7.csv   0.142857  1.000000  0.250000
+11     realAWSCloudwatch/elb_request_count_8c0756.csv   0.333333  1.000000  0.500000
+12             realAWSCloudwatch/grok_asg_anomaly.csv   0.500000  0.333333  0.400000
+13  realAWSCloudwatch/iio_us-east-1_i-a2eb1cd9_Net...   1.000000  0.500000  0.666667
+14   realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv   0.500000  1.000000  0.666667
+15   realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv   1.000000  1.000000  1.000000

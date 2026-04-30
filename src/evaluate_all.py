@@ -2,82 +2,119 @@ import torch
 import numpy as np
 import pandas as pd
 import json
-import joblib
 import os
+import matplotlib.pyplot as plt
+
 from config import DATA_DIR, LABELS_PATH, DATASETS, SEQ_LEN, HIDDEN_DIM, LATENT_DIM, SMOOTH_WINDOW
 from train_all import LSTMAutoencoder, load_nab_timeseries, create_sequences, smooth
 
+
+# =========================
+# Window-based metrics
+# =========================
+
+def compute_window_metrics(pred, t_test, anomaly_windows):
+    detected = []
+    in_block = False
+
+    for i, p in enumerate(pred):
+        if p and not in_block:
+            start = t_test[i]
+            in_block = True
+        elif not p and in_block:
+            detected.append((start, t_test[i]))
+            in_block = False
+
+    if in_block:
+        detected.append((start, t_test[-1]))
+
+    TP = 0
+    for real_start, real_end in anomaly_windows:
+        for pred_start, pred_end in detected:
+            if pred_start <= real_end and pred_end >= real_start:
+                TP += 1
+                break
+
+    FP = len(detected) - TP
+    FN = len(anomaly_windows) - TP
+
+    precision = TP / (TP + FP) if (TP + FP) else 0
+    recall = TP / (TP + FN) if (TP + FN) else 0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0
+
+    return precision, recall, f1, TP, FP, FN
+
+
+# =========================
+# Evaluate
+# =========================
+
 def evaluate_dataset(dataset_key):
+    print(f"\nEvaluating {dataset_key}")
+
     safe_name = dataset_key.replace('/', '_')
     model_dir = os.path.join("model", safe_name)
-    threshold_file = os.path.join(model_dir, "threshold.txt")
-    if not os.path.exists(threshold_file):
-        print(f"  Нет модели для {dataset_key}, пропускаем")
+
+    if not os.path.exists(model_dir):
         return None
 
-    with open(threshold_file) as f:
-        threshold = float(f.readline().strip())
-        # seq_len из файла (вторая строка) – мы и так знаем из конфига, можно не читать
+    threshold = float(open(os.path.join(model_dir, "threshold.txt")).read())
+    mean, std = np.load(os.path.join(model_dir, "norm.npy"))
 
     timestamps, series = load_nab_timeseries(dataset_key)
+
     with open(LABELS_PATH) as f:
-        labels_dict = json.load(f)
-    anomaly_windows_raw = labels_dict.get(dataset_key, [])
-    anomaly_windows = [(pd.to_datetime(s), pd.to_datetime(e)) for s, e in anomaly_windows_raw]
+        labels = json.load(f)
+
+    anomaly_windows = [
+        (pd.to_datetime(s), pd.to_datetime(e))
+        for s, e in labels.get(dataset_key, [])
+    ]
 
     X = create_sequences(series, SEQ_LEN)
-    t_windows = timestamps[SEQ_LEN-1:]
+    t = timestamps[SEQ_LEN - 1:]
 
-    # Разделение должно совпадать с train (понадобится заново определить train_mask)
-    # Чтобы не усложнять, можно сохранять маску, но проще повторить логику из train.
-    first_anom = min(w[0] for w in anomaly_windows) if anomaly_windows else t_windows[-1] + pd.Timedelta(1)
-    train_mask = t_windows < first_anom
-    if not np.any(train_mask):
-        split = int(0.7 * len(X))
-        train_mask = np.zeros(len(X), dtype=bool)
-        train_mask[:split] = True
-    X_test = X[~train_mask]
-    t_test = t_windows[~train_mask]
+    X = (X - mean) / std
+    X_t = torch.tensor(X, dtype=torch.float32).unsqueeze(-1)
 
-    # Масштабирование с сохранённым scaler
-    scaler = joblib.load(os.path.join(model_dir, "scaler.pkl"))
-    X_test_scaled = scaler.transform(X_test.reshape(-1, 1)).reshape(X_test.shape)
-    X_test_t = torch.tensor(X_test_scaled, dtype=torch.float32).unsqueeze(-1)
-
-    model = LSTMAutoencoder(input_dim=1, hidden_dim=HIDDEN_DIM, latent_dim=LATENT_DIM)
-    model.load_state_dict(torch.load(os.path.join(model_dir, "lstm_ae.pt")))
+    model = LSTMAutoencoder(1, HIDDEN_DIM, LATENT_DIM)
+    model.load_state_dict(torch.load(os.path.join(model_dir, "model.pt")))
     model.eval()
 
     with torch.no_grad():
-        recon = model(X_test_t)
-    mse = torch.mean((X_test_t - recon) ** 2, dim=(1,2)).numpy()
-    mse_smooth = smooth(mse, SMOOTH_WINDOW)
+        recon = model(X_t)
 
-    pred = mse_smooth > threshold
-    true = np.zeros(len(t_test), dtype=bool)
-    for start, end in anomaly_windows:
-        true |= (t_test >= start) & (t_test <= end)
+    mse = torch.mean((X_t - recon) ** 2, dim=(1, 2)).numpy()
+    mse = smooth(mse, SMOOTH_WINDOW)
 
-    TP = np.sum(pred & true)
-    FP = np.sum(pred & ~true)
-    FN = np.sum(~pred & true)
-    precision = TP / (TP+FP) if (TP+FP) else 0
-    recall = TP / (TP+FN) if (TP+FN) else 0
-    f1 = 2 * precision * recall / (precision+recall) if (precision+recall) else 0
-    return {"Dataset": dataset_key, "Precision": precision, "Recall": recall, "F1": f1}
+    pred = mse > threshold
+    pred = pd.Series(pred).rolling(5, center=True).max().fillna(0).astype(bool).values
+
+    precision, recall, f1, TP, FP, FN = compute_window_metrics(pred, t, anomaly_windows)
+
+    print(f"TP={TP}, FP={FP}, FN={FN}")
+    print(f"Precision={precision:.3f}, Recall={recall:.3f}, F1={f1:.3f}")
+
+    return {
+        "Dataset": dataset_key,
+        "Precision": precision,
+        "Recall": recall,
+        "F1": f1
+    }
+
 
 if __name__ == "__main__":
     results = []
+
     for ds in DATASETS:
-        print(f"Evaluating {ds}...")
         res = evaluate_dataset(ds)
         if res:
             results.append(res)
+
     df = pd.DataFrame(results)
-    print("\n===== Сводная таблица =====")
-    print(df.to_string(index=False))
-    print("\nСредние метрики:")
-    print(f"Precision: {df['Precision'].mean():.3f} ± {df['Precision'].std():.3f}")
-    print(f"Recall:    {df['Recall'].mean():.3f} ± {df['Recall'].std():.3f}")
-    print(f"F1:        {df['F1'].mean():.3f} ± {df['F1'].std():.3f}")
-    df.to_csv("model/results_lstm_ae.csv", index=False)
+
+    print("\n===== RESULT =====")
+    print(df)
+
+    print("\nMean:")
+    print(df.mean(numeric_only=True))
