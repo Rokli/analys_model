@@ -3,6 +3,7 @@ import torch.nn as nn
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from fetch_metrics import collect_metrics
+from load_data_nbm import load_nab_data_and_labels
 
 class Autoencoder(nn.Module):
     def __init__(self):
@@ -26,7 +27,7 @@ class Autoencoder(nn.Module):
 
 
 if __name__ == "__main__":
-    data = collect_metrics()
+    data = load_nab_data_and_labels()
     
     print(data.head())
     print(data.describe())
