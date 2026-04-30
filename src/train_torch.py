@@ -3,6 +3,7 @@ import torch.nn as nn
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from utils import generate_data
+from fetch_metrics import collect_metrics
 
 class Autoencoder(nn.Module):
     def __init__(self):
@@ -26,8 +27,11 @@ class Autoencoder(nn.Module):
 
 
 if __name__ == "__main__":
-    # данные
-    data = generate_data()
+    data = collect_metrics()
+    
+    print(data.head())
+    print(data.describe())
+    
     scaler = MinMaxScaler()
     data_scaled = scaler.fit_transform(data)
 
