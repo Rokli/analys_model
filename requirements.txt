@@ -7,3 +7,5 @@ streamlit
 plotly
 requests
 streamlit-autorefresh
+fastapi
+uvicorn

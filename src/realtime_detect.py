@@ -56,6 +56,8 @@ def main():
     anomaly_counter = 0
     normal_counter = 0
     prev_value = None
+    last_logged_status = "normal"
+    alerts_file = "model/alerts.log"
 
     print("Real-time anomaly detection started")
     print(f"Threshold: {threshold:.6f}")
@@ -135,6 +137,23 @@ def main():
 
         status = current_status
 
+        if status != last_logged_status:
+            alert_message = (
+                f"{datetime.now().isoformat(timespec='seconds')} | "
+                f"STATUS_CHANGED | "
+                f"{last_logged_status} -> {status} | "
+                f"value={value:.2f} | "
+                f"mse={mse:.6f} | "
+                f"threshold={threshold:.6f}"
+            )
+
+            with open(alerts_file, "a") as f:
+                f.write(alert_message + "\n")
+
+            print(f"ALERT: {alert_message}")
+
+            last_logged_status = status
+        
         print(
             f"value={value:.2f}, "
             f"delta={delta:.2f}, "
