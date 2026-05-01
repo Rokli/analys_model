@@ -9,3 +9,5 @@ requests
 streamlit-autorefresh
 fastapi
 uvicorn
+PySide6 
+pyqtgraph

@@ -18,6 +18,7 @@ from config import (
 
 from prometheus_client import query_instant
 from train_all import LSTMAutoencoder
+from state_store import ensure_storage, save_state, add_alert
 
 
 def main():
@@ -36,6 +37,8 @@ def main():
         threshold = float(f.read().strip())
 
     os.makedirs("model", exist_ok=True)
+    ensure_storage()
+
     log_file = "model/realtime_log.csv"
 
     with open(log_file, "w", newline="") as f:
@@ -53,11 +56,11 @@ def main():
     window = deque(maxlen=SEQ_LEN)
 
     current_status = "normal"
+    last_status = "normal"
+
     anomaly_counter = 0
     normal_counter = 0
     prev_value = None
-    last_logged_status = "normal"
-    alerts_file = "model/alerts.log"
 
     print("Real-time anomaly detection started")
     print(f"Threshold: {threshold:.6f}")
@@ -85,6 +88,19 @@ def main():
                 f"Collecting window: {len(window)}/{SEQ_LEN}, "
                 f"value={value:.2f}, delta={delta:.2f}"
             )
+
+            state = {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "value": value,
+                "delta": delta,
+                "mse": None,
+                "threshold": threshold,
+                "raw_status": "collecting",
+                "status": "collecting"
+            }
+
+            save_state(state)
+
             time.sleep(REALTIME_INTERVAL)
             continue
 
@@ -111,9 +127,9 @@ def main():
         # 4 состояния системы
         # =========================
         # normal      — нормальная работа
-        # load_start  — начинается рост нагрузки
-        # anomaly     — обнаружена аномалия
-        # recovery    — разгрузка после аномалии
+        # load_start  — появляется нагрузка
+        # anomaly     — аномальное состояние
+        # recovery    — разгрузка после нагрузки
 
         if current_status == "normal":
             if delta > 5:
@@ -137,23 +153,30 @@ def main():
 
         status = current_status
 
-        if status != last_logged_status:
-            alert_message = (
-                f"{datetime.now().isoformat(timespec='seconds')} | "
-                f"STATUS_CHANGED | "
-                f"{last_logged_status} -> {status} | "
-                f"value={value:.2f} | "
-                f"mse={mse:.6f} | "
-                f"threshold={threshold:.6f}"
+        timestamp = datetime.now().isoformat(timespec="seconds")
+
+        state = {
+            "timestamp": timestamp,
+            "value": value,
+            "delta": delta,
+            "mse": mse,
+            "threshold": threshold,
+            "raw_status": raw_status,
+            "status": status
+        }
+
+        save_state(state)
+
+        if status != last_status:
+            add_alert(
+                old_status=last_status,
+                new_status=status,
+                value=value,
+                mse=mse,
+                threshold=threshold
             )
+            last_status = status
 
-            with open(alerts_file, "a") as f:
-                f.write(alert_message + "\n")
-
-            print(f"ALERT: {alert_message}")
-
-            last_logged_status = status
-        
         print(
             f"value={value:.2f}, "
             f"delta={delta:.2f}, "
@@ -166,7 +189,7 @@ def main():
         with open(log_file, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
-                datetime.now().isoformat(timespec="seconds"),
+                timestamp,
                 value,
                 delta,
                 mse,
